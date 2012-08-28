@@ -1,0 +1,11 @@
+{
+    "name": "firechicken",
+    "description": "Lightweight graphite monitoring",
+    "author": "Sean Sullivan <seansulli@gmail.com>",
+    "version": "0.0.1",
+    "private": true,
+    "dependencies": {
+        "cli": "0.4.x",
+        "nodemailer": "0.3.x"
+    }
+}

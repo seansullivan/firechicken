@@ -1,0 +1,31 @@
+{
+    "graphite": {
+        "host": "localhost",
+        "port": 80,
+        "username": "",
+        "password": ""
+    },
+    "rate": 60000,
+    "notify": {
+        "email": {
+            "host": "localhost",
+            "port": 25,
+            "sender": "firechicken@localhost",
+            "active": true
+        }
+    },
+    "subscribers": [
+        {
+            "id": 0,
+            "type": "email",
+            "address": "admin@mydomain.com"
+        }
+    ],
+    "checks": [
+        {
+            "stat": "graphite.stat.to.watch",
+            "condition": "x > 40",
+            "subscribers": [0]
+        }
+    ]
+}
