@@ -7,13 +7,13 @@ var check = function (config) {
     this.server = {};
     this.lastStatus = null;
     this.lastValue = null;
-}
+};
 
-check.prototype = new events.EventEmitter;
+check.prototype = new events.EventEmitter();
 
 check.prototype.setServer = function (conf) {
     this.server = conf;
-}
+};
 
 check.prototype.exec = function () {
     if(!this.server.host || !this.server.port) {
@@ -34,7 +34,7 @@ check.prototype.exec = function () {
     };
 
     if(this.server.username && this.server.password) {
-        options['auth'] = this.server.username+':'+this.server.password;
+        options.auth = this.server.username+':'+this.server.password;
     }
 
     cli.debug("Sending stat retrieval request for: " + this.options.stat);
@@ -56,14 +56,16 @@ check.prototype.exec = function () {
     });
 
     req.end();
-}
+};
 
 check.prototype.processResponse = function(body) {
+    var values = null,
+        value = null,
+        i,
+        condition;
+
     try {
-        var values = body.split('|')[1].split(','),
-            value = null,
-            i,
-            condition;
+        values = body.split('|')[1].split(',');
 
         values.reverse();
 
@@ -82,7 +84,7 @@ check.prototype.processResponse = function(body) {
 
     this.lastValue = value;
 
-    if(value == null) {
+    if(value === null) {
         cli.error('No valid value for stat: '+this.options.stat);
     }
 
@@ -107,6 +109,6 @@ check.prototype.processResponse = function(body) {
         cli.error('No condition given for stat');
         this.lastStatus = null;
     }
-}
+};
 
 module.exports = check;

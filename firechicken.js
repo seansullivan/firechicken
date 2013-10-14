@@ -27,7 +27,7 @@ var app = function () {
 
         if(fs.existsSync(options.config)) { // first thing, load conf
             try { // wrap in try/catch since config could be invalid
-                conf = JSON.parse(fs.readFileSync(options.config, 'utf-8'))
+                conf = JSON.parse(fs.readFileSync(options.config, 'utf-8'));
             }
             catch(e) {
                 cli.debug("Error parsing config file: "+e+"");
@@ -42,7 +42,7 @@ var app = function () {
         /**
          * Search for individuals to notiy by their id
          */
-        var findRecipientById = function(id) {
+        findRecipientById = function(id) {
             for(j=0; j < conf.subscribers.length; j++) {
                 if(conf.subscribers[j].id == id) {
                     return conf.subscribers[j];
@@ -50,7 +50,7 @@ var app = function () {
             }
 
             return false;
-        }
+        };
 
         // build check objects from config data
         for(k in conf.checks) {
@@ -62,7 +62,7 @@ var app = function () {
             // listener for notify event, will trigger email (or any other supported forms of notification)
             tmpCheck.on('notify', function(val) {
                 // iterate through subscribers for this check and notify them
-                for(l in this.options.subscribers) {
+                for(var l in this.options.subscribers) {
                     try {
                         recipient = findRecipientById(this.options.subscribers[l]);
 
@@ -70,7 +70,7 @@ var app = function () {
                         if(recipient.type == 'email') {
                             mailer = new mail(conf.notify.email, recipient.address, this.options.stat, val);
 
-                            if(conf.notify.email.active == true) {
+                            if(conf.notify.email.active === true) {
                                 mailer.send();
                             }
                             else {
@@ -102,6 +102,6 @@ var app = function () {
     });
 
     cli.info("Firechicken started.");
-}
+};
 
 app();

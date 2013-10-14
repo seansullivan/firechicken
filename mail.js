@@ -15,9 +15,9 @@ var mail = function (config, recipient, stat, val) {
 
     this.body = "Firechicken has detected an error condition:\n\n \
      " + stat + " has reported a value of " + val.toString();
-}
+};
 
-mail.prototype = new events.EventEmitter;
+mail.prototype = new events.EventEmitter();
 
 mail.prototype.send = function () {
     var self = this;
@@ -38,6 +38,6 @@ mail.prototype.send = function () {
             }
         }
     );
-}
+};
 
 module.exports = mail;
