@@ -6,6 +6,7 @@
         "password": ""
     },
     "rate": 60000,
+    "contactFrequencyInMinutes": 120,
     "notify": {
         "email": {
             "host": "localhost",

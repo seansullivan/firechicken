@@ -2,7 +2,8 @@ var cli = require('cli').enable('status', 'version'),
     pjson = require('./package.json'),
     fs = require('fs'),
     check = require('./check.js'),
-    mail = require('./mail.js');
+    mail = require('./mail.js'),
+    _ = require('lodash');
 
 var app = function () {
     cli.enable('version');
@@ -17,13 +18,15 @@ var app = function () {
         // attemp to get config file
         var conf, // hold conf json
             checks = [], // list of checks to perform
-            tmpCheck, // use to build temp check object before pushing onto list
+            tmpCheck = null,
             recipient, // temp recipient value
             mailer, // object of mail object before sending
             findRecipientById, // helper function fore searching for a subscriber by their id
             j, // iterate over notify list
             k, // iterate over checks in conf to construct check objects
-            l; // iterate over subscribers to check when "notify" event fires
+            l, // iterate over subscribers to check when "notify" event fires
+            alertsSent = {},
+            journal;
 
         if(fs.existsSync(options.config)) { // first thing, load conf
             try { // wrap in try/catch since config could be invalid
@@ -38,6 +41,8 @@ var app = function () {
         }
 
         cli.debug('Enabling logging');
+
+        journal = require('./contact_journal')(conf);
 
         /**
          * Search for individuals to notiy by their id
@@ -60,23 +65,37 @@ var app = function () {
             tmpCheck.setServer(conf.graphite);
 
             // listener for notify event, will trigger email (or any other supported forms of notification)
-            tmpCheck.on('notify', function(val) {
+            tmpCheck.on('notify', function(value) {
+                // stash id of check
+                var checkId = k,
+                    check = this;
+
                 // iterate through subscribers for this check and notify them
-                for(var l in this.options.subscribers) {
+                _.forEach(tmpCheck.options.subscribers, function (subscriberId) {
+                    // determine if subscriber was recently contacted about this issue
                     try {
-                        recipient = findRecipientById(this.options.subscribers[l]);
+                        if(!journal.shouldContact(subscriberId, checkId)) {
+                            cli.info("Not contacting subscriber about this check again.");
+                            return;
+                        }
+
+                        cli.info("Contacting subscriber about metric check.");
+                        journal.logContact(subscriberId, checkId);
+
+                        recipient = findRecipientById(subscriberId);
 
                         // only email is supported currently
                         if(recipient.type == 'email') {
-                            mailer = new mail(conf.notify.email, recipient.address, this.options.stat, val);
+                            mailer = new mail(conf.notify.email, recipient.address, check.options.stat, value);
 
                             if(conf.notify.email.active === true) {
                                 mailer.send();
+
+                                journal.logContact(subscriberId, checkId);
                             }
                             else {
                                 cli.debug("Mail not sent due to active configuration set to false");
                             }
-
                         }
                         else {
                             cli.error("Invalid notification type");
@@ -86,7 +105,7 @@ var app = function () {
                         cli.debug(e.message);
                     }
 
-                }
+                });
             });
 
             checks.push(tmpCheck);

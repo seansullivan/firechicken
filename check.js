@@ -1,8 +1,7 @@
 var events = require('events'),
     http = require('http'),
-    cli = require('cli');
-
-var request = require('superagent');
+    cli = require('cli'),
+    request = require('superagent');
 
 var check = function (config) {
     this.options = config;
@@ -82,7 +81,7 @@ check.prototype.processResponse = function(body) {
         cli.debug('Could not parse response, unexpected format');
     }
 
-    this.lastValue = value;
+    this.lastValue = parseFloat(value);
 
     if(value === null) {
         cli.error('No valid value for stat: '+this.options.stat);
@@ -93,6 +92,7 @@ check.prototype.processResponse = function(body) {
         try {
             if(eval(condition)) {
                 cli.error("ERROR condition detected for " + this.options.stat + " with a value of " + value);
+
                 this.lastStatus = 'ERROR';
                 this.emit('notify', value);
             }

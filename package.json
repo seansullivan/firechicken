@@ -6,6 +6,7 @@
   "private": true,
   "dependencies": {
     "cli": "0.4.x",
+    "lodash": "^2.4.1",
     "nodemailer": "0.3.x",
     "superagent": "^0.20.0"
   }
