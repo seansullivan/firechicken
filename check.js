@@ -2,6 +2,8 @@ var events = require('events'),
     http = require('http'),
     cli = require('cli');
 
+var request = require('superagent');
+
 var check = function (config) {
     this.options = config;
     this.server = {};
@@ -33,29 +35,27 @@ check.prototype.exec = function () {
         method: 'GET'
     };
 
+    // Auth currently not supported
     if(this.server.username && this.server.password) {
         options.auth = this.server.username+':'+this.server.password;
     }
 
     cli.debug("Sending stat retrieval request for: " + this.options.stat);
 
-    req = http.request(options, function(res) {
-        cli.debug('Stat retrieval status: ' + res.statusCode);
+    request
+        .get(options.host + options.path)
+        .set('port', options.port)
+        .end(function(error, result){
+            if(error) {
+                cli.debug("Error");
+                return;
+            }
 
-        if(res.statusCode == 200) {
-            res.setEncoding('utf8');
-            res.on('data', function (chunk) {
-                responseBody += chunk;
-            });
+            var responseBody = result.text;
 
-            res.on('end', function (e) {
-                cli.debug('Stat retrieval response: ' + responseBody);
-                self.processResponse(responseBody);
-            });
-        }
-    });
-
-    req.end();
+            cli.debug('Stat retrieval response: ' + responseBody);
+            self.processResponse(responseBody);
+        });
 };
 
 check.prototype.processResponse = function(body) {
