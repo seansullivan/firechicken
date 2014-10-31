@@ -1,7 +1,9 @@
 var events = require('events'),
     http = require('http'),
     cli = require('cli'),
-    request = require('superagent');
+    _ = require('lodash'),
+    request = require('superagent'),
+    util = require('util');
 
 var check = function (config) {
     this.options = config;
@@ -52,7 +54,7 @@ check.prototype.exec = function () {
 
             var responseBody = result.text;
 
-            cli.debug('Stat retrieval response: ' + responseBody);
+            cli.debug('Stat retrieval response: ' + responseBody.trim());
             self.processResponse(responseBody);
         });
 };
@@ -66,29 +68,26 @@ check.prototype.processResponse = function(body) {
     try {
         values = body.split('|')[1].split(',');
 
-        values.reverse();
+        // parse every value to a float
+        values = _.map(values, parseFloat);
 
-        for(i=0; i < values.length; i++) {
-            // weed out "None" values...
-            // we want the last value that was a number
-            if(!isNaN(values[i])) { //expecting a number
-                value = values[i];
-                break;
-            }
-        }
+        value = _.max(values);
     }
     catch(e) {
         cli.debug('Could not parse response, unexpected format');
     }
 
-    this.lastValue = parseFloat(value);
+    this.lastValue = value;
 
-    if(value === null) {
+    if(value === null || !_.isNumber(value)) {
         cli.error('No valid value for stat: '+this.options.stat);
+        return;
     }
 
     if(this.options.condition) {
+        cli.debug(util.format("Checking stat: %s with condition: %s and value of: %d", this.options.stat, this.options.condition, value));
         condition = this.options.condition.replace(/x/, value);
+
         try {
             if(eval(condition)) {
                 cli.error("ERROR condition detected for " + this.options.stat + " with a value of " + value);
