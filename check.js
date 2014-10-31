@@ -32,7 +32,7 @@ check.prototype.exec = function () {
     options = {
         host: this.server.host,
         port: this.server.port,
-        path: '/render?target='+this.options.stat+'&rawData=true&from=-5min',
+        path: '/render?target='+this.options.stat+'&rawData=true&from=-'+this.options.timeAgo,
         method: 'GET'
     };
 

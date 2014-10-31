@@ -25,6 +25,7 @@
     "checks": [
         {
             "stat": "graphite.stat.to.watch",
+            "timeAgo": "60min",
             "condition": "x > 40",
             "subscribers": [0]
         }
