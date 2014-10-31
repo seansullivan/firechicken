@@ -70,6 +70,12 @@ check.prototype.processResponse = function(body) {
 
         // parse every value to a float
         values = _.map(values, parseFloat);
+        values = _.filter(values, function(value) { return !isNaN(value); });
+
+        if(_.isEmpty(values)) {
+            cli.debug("No valid values for stat: "+this.options.stat);
+            return;
+        }
 
         value = _.max(values);
     }
