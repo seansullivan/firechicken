@@ -1,22 +1,69 @@
-var events = require('events'),
-    http = require('http'),
-    cli = require('cli'),
+var cli = require('cli'),
     _ = require('lodash'),
     request = require('superagent'),
-    util = require('util');
+    util = require('util'),
+    journal = null,
+    mail = require('./mail'),
+    config = null,
 
-var check = function (config) {
-    this.options = config;
-    this.server = {};
-    this.lastStatus = null;
-    this.lastValue = null;
+    /**
+     * Search for individuals to notiy by their id
+     */
+    findRecipientById = function(id) {
+        for(j=0; j < config.subscribers.length; j++) {
+            if(config.subscribers[j].id == id) {
+                return config.subscribers[j];
+            }
+        }
+
+        return false;
+    };
+
+var check = function (options, id) {
+    this.options = options;
+    this.server = config.graphite;
+    this.id = id;
 };
 
-check.prototype = new events.EventEmitter();
+check.prototype.onNotify = function (value) {
+    var self = this;
 
-check.prototype.setServer = function (conf) {
-    this.server = conf;
-};
+    // iterate through subscribers for this check and notify them
+    _.forEach(this.options.subscribers, function (subscriberId) {
+        // determine if subscriber was recently contacted about this issue
+        try {
+            if(!journal.shouldContact(subscriberId, self.id)) {
+                cli.debug("Not contacting subscriber about this check again.");
+                return;
+            }
+
+            cli.info(util.format("Contacting subscriber %s about metric check.", subscriberId));
+            journal.logContact(subscriberId, self.id);
+
+            recipient = findRecipientById(subscriberId);
+
+            // only email is supported currently
+            if(recipient.type == 'email') {
+                mailer = new mail(config.notify.email, recipient.address, self.options.stat, value);
+
+                if(config.notify.email.active === true) {
+                    mailer.send();
+
+                    journal.logContact(subscriberId, self.id);
+                }
+                else {
+                    cli.debug("Mail not sent due to active configuration set to false");
+                }
+            }
+            else {
+                cli.error("Invalid notification type");
+            }
+        }
+        catch (e) {
+            cli.debug(e.message);
+        }
+    });
+}
 
 check.prototype.exec = function () {
     if(!this.server.host || !this.server.port) {
@@ -25,16 +72,11 @@ check.prototype.exec = function () {
     }
 
     var self = this,
-        options,
-        responseBody = '',
-        req;
-
-    options = {
-        host: this.server.host,
-        port: this.server.port,
-        path: '/render?target='+this.options.stat+'&rawData=true&from=-'+this.options.timeAgo,
-        method: 'GET'
-    };
+        options = {
+            host: this.server.host,
+            port: this.server.port,
+            path: '/render?target='+this.options.stat+'&rawData=true&from=-'+this.options.timeAgo
+        };
 
     // Auth currently not supported
     if(this.server.username && this.server.password) {
@@ -55,6 +97,7 @@ check.prototype.exec = function () {
             var responseBody = result.text;
 
             cli.debug('Stat retrieval response: ' + responseBody.trim());
+
             self.processResponse(responseBody);
         });
 };
@@ -62,7 +105,6 @@ check.prototype.exec = function () {
 check.prototype.processResponse = function(body) {
     var values = null,
         value = null,
-        i,
         condition;
 
     try {
@@ -83,8 +125,6 @@ check.prototype.processResponse = function(body) {
         cli.debug('Could not parse response, unexpected format');
     }
 
-    this.lastValue = value;
-
     if(value === null || !_.isNumber(value)) {
         cli.error('No valid value for stat: '+this.options.stat);
         return;
@@ -96,24 +136,23 @@ check.prototype.processResponse = function(body) {
 
         try {
             if(eval(condition)) {
-                cli.error("ERROR condition detected for " + this.options.stat + " with a value of " + value);
-
-                this.lastStatus = 'ERROR';
-                this.emit('notify', value);
-            }
-            else {
-                this.lastStatus = 'NORMAL';
+                cli.info("ERROR condition detected for " + this.options.stat + " with a value of " + value);
+                this.onNotify(value);
             }
         }
         catch (e) {
             cli.error("Unable to evaluate condition for check: "+e.message);
-            this.lastStatus = null;
         }
     }
     else {
         cli.error('No condition given for stat');
-        this.lastStatus = null;
     }
 };
 
-module.exports = check;
+module.exports = function (config_) {
+    config = config_;
+
+    journal = require('./contact_journal')(config);
+
+    return check;
+};
